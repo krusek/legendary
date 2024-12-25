@@ -1,8 +1,10 @@
 import 'dart:collection';
+import 'dart:html';
 
 import 'package:legendary/logic/card.dart';
 
 import 'discard_collection.dart';
+import 'player.dart';
 
 class Board {
   final Queue<Objective> objectives;
@@ -21,18 +23,58 @@ class Board {
   final DiscardCollection<CharacterCard> barracks;
   final List<CharacterCard> hq;
 
+  final DiscardCollection<Player> players;
+  final List<Player> deadPlayers = List.empty(growable: true);
+  int _currentPlayer = 0;
+
   Board({
-    required this.objectives,
+    required Iterable objectives,
     required this.location,
     required Iterable<EnemyCard> hive,
-    required this.hatchery,
+    required Iterable<EnemyCard> hatchery,
     required Iterable<Strike> strikes,
-    required this.sergeants,
-    required this.hq,
+    required Iterable<CharacterCard> sergeants,
+    required Iterable<CharacterCard> hq,
     required Iterable<CharacterCard> barracks,
-  })   : this.strikes = DiscardCollection(initial: strikes),
+    required Iterable<Player> players,
+  })   : this.objectives = Queue.from(objectives),
+        this.hive = DiscardCollection(initial: hive),
+        this.hatchery = Queue.from(hatchery),
+        this.strikes = DiscardCollection(initial: strikes),
+        this.sergeants = Queue.from(sergeants),
         this.barracks = DiscardCollection(initial: barracks),
-        this.hive = DiscardCollection(initial: hive);
+        this.hq = List.from(hq),
+        this.players = DiscardCollection(initial: players),
+        assert(players.isNotEmpty);
+
+  void nextPlayer() {
+    final player = players.draw(1).first;
+    players.discard([player]);
+  }
+
+  Player get currentPlayer => players.topCard;
+
+  void enemyAttackPhase() {
+    final Player player = currentPlayer;
+    for (final enemy in combatZone) {
+      int count = enemy.attackCount;
+      final strike = strikes.draw(count);
+      for (final s in strike) {
+        player.strike(s);
+        Strike past = s;
+        while (past.drawAgain) {
+          past = strikes.draw(1).first;
+          player.strike(past);
+          strikes.discard([past]);
+        }
+      }
+      strikes.discard(strike);
+    }
+    if (player.dead) {
+      print('player $_currentPlayer has died');
+      deadPlayers.addAll(players.draw(1));
+    }
+  }
 }
 
 abstract class ComplexRoom {
@@ -50,18 +92,6 @@ class Objective {}
 class StandardRoom extends ComplexRoom {
   final int scanCost;
   StandardRoom(int index) : scanCost = (index / 2).floor() + 2;
-}
-
-class Strike {
-  final bool healable;
-  final int count;
-  final bool drawAgain;
-
-  Strike({
-    required this.healable,
-    required this.count,
-    required this.drawAgain,
-  });
 }
 
 class TheComplex {

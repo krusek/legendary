@@ -8,6 +8,8 @@ class DiscardCollection<T> {
 
   bool get empty => _collection.length + _discard.length == 0;
 
+  T get topCard => this._collection.first;
+
   void discard(Iterable<T> cards) {
     _discard.addAll(cards);
   }

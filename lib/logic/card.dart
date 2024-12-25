@@ -49,4 +49,18 @@ abstract class EnemyCard {
     _revealed = false;
     return this;
   }
+
+  int get attackCount => 1;
+}
+
+class Strike {
+  final bool healable;
+  final int count;
+  final bool drawAgain;
+
+  Strike({
+    required this.healable,
+    required this.count,
+    required this.drawAgain,
+  });
 }
